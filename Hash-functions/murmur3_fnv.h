@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include<string>
 using namespace std;
@@ -17,9 +18,9 @@ uint32_t FNV1a(string data)
 	}
 	return hash;
 }
-uint32_t MuRMuR3(string data,unsigned int seed)//murmur3 funkcionira sa ukljucenim saltiranjem salt=seed
+uint32_t MuRMuR3(string data, unsigned int seed)//murmur3 funkcionira sa ukljucenim saltiranjem salt=seed
 {
-	uint32_t hash=seed;
+	uint32_t hash = seed;
 	const uint32_t c1 = 0xcc9e2d51;
 	const uint32_t c2 = 0x1b873593;
 	const uint32_t c3 = 0x85ebca6b;
@@ -45,9 +46,9 @@ uint32_t MuRMuR3(string data,unsigned int seed)//murmur3 funkcionira sa ukljucen
 	uint32_t k = 0;
 	switch (numOfRemaining)
 	{
-		case 3: k ^= data[4*numOfBlocks  + 2] << 16;//manipulacija preostalim bitovima
-		case 2: k ^= data[4*numOfBlocks + 1] << 8;
-		case 1: k ^= data[4*numOfBlocks+ 0];
+	case 3: k ^= data[4 * numOfBlocks + 2] << 16;//manipulacija preostalim bitovima
+	case 2: k ^= data[4 * numOfBlocks + 1] << 8;
+	case 1: k ^= data[4 * numOfBlocks + 0];
 		k *= c1;
 		k = _rotl(k, r1);
 		k *= c2;
@@ -63,10 +64,4 @@ uint32_t MuRMuR3(string data,unsigned int seed)//murmur3 funkcionira sa ukljucen
 	hash ^= (hash >> 16);
 
 	return hash;
-}
-//za 2 na n-t bitne intervale, mozemo ciljat interval sa XOR foldon, tj. ako trebamo 24 bitni rezultat uzimamo 24 manjeznacajna bita od ovih 32 i XOR-amo ih sa ovih 8(njih izvucemo tako da originalna 32 shiftamo desno za 24 tako da ce ostat 16nula pa tih preostalih 8
-//lazy mod radi al ne bas tolko precizno al zanemarivo http://www.isthe.com/chongo/tech/comp/fnv/
-int main()
-{
-	return 0;
 }
