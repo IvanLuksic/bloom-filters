@@ -117,22 +117,14 @@ int main()
 			bf.unesi(FNV1a(rijec) % bf.getVelicina(), MuRMuR3(rijec, 2) % bf.getVelicina());
 			cout << "\nFalse positive: " << setprecision(2) << fixed << bf.falsePositive() << "%"<<endl;
 
-			/*Provjera jeli veæ unesena rijec ista koja u biti ne minja false positive.
-			for (int i = 0; i < uneseneRijeci.size(); i++) {
-				if (rijec == uneseneRijeci[i])
-					break;
-				else
-					brojUnesenih++;
-			}*/
-
 			cout << "Vas set = [";
 			ispisRijeci(uneseneRijeci);
 			cout << "]" << endl;
 			break;
 		case 2:
 			cout << "\nUnesite string: ";
-			// NE ÈITA RAZMAK
-			cin >> rijec;
+			cin.ignore();
+			getline(cin, rijec);
 
 			bf.ispis();
 			cout << "fnv: " << FNV1a(rijec) % bf.getVelicina() << endl << "murmur: " << MuRMuR3(rijec, 2) % bf.getVelicina() << endl;
