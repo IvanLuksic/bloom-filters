@@ -277,7 +277,7 @@ int checkForFalsePositive(string file , BloomFilter filter) {
 }
 
 
-int chooseDifferentHashes(const int hashChoice, const string file, BloomFilter filter){
+int chooseDifferentHashes(const int hashChoice, const string file, BloomFilter& filter){
 	
 	ifstream fileChoosen(file);
 	string line;
