@@ -22,7 +22,7 @@ public:
 	int insertKM(string);
 	int insertPlainF(string);
 	int insertPlainS(string);
-	int getStatsF();
+	int getStats(int);
 	int countTrue();
 	int checkMinMax(int, int&, int&);
 	int setFirstTime(int, int& , int& );
@@ -34,6 +34,7 @@ protected:
 	unsigned int seed;//za murmur
 
 	int durationFasterHashes;
+	int durationSlowerHashes;
 
 	//Indeksi 0 - ukupno, 1 - minimum, 2 - max
 	int murmurTimes[3];
@@ -42,11 +43,18 @@ protected:
 };
 
 //Racunanje prosjecnih i potpunih vremena dodavanja
-int BloomFilter::getStatsF() {
-
-	cout << "Murmur3 average time on 74000 items (in nanoseconds): " << murmurTimes[0] / 74400 << " maximum time: " << murmurTimes[2] << " minimum time: " << murmurTimes[1] << endl;
-
-	cout << "Fnv average time on 1000 items (in nanoseconds): " << fnvTimes[0] / 74400 << " maximum time: " << fnvTimes[2] << " minimum time: " << fnvTimes[1] << endl;
+int BloomFilter::getStats(const int itemNum) {
+	if (murmurTimes != 0) {
+		
+		cout << "Vrijeme izvrsavanja - murmur3:" << endl << " 1) Prosjek: " << murmurTimes[0] / itemNum << " 2) Najkrace izvrsavanje: " << murmurTimes[1] << " 3) Najdulje izvrsavanje: " << murmurTimes[2]<<endl<<endl;
+		cout << "Vrijeme izvrsavanja - fnv:" << endl << " 1) Prosjek: " << fnvTimes[0] / itemNum << " 2) Najkrace izvrsavanje: " << fnvTimes[1] << " 3) Najdulje izvrsavanje: " << fnvTimes[2] << endl;
+		cout << "Broj dodanih elemenata: " << itemNum << " Sveukupno vrijeme izvrsavanja: " << durationFasterHashes;
+	}
+	else if(md5Times[0] !=0) {
+		cout << "Vrijeme izvrsavanja - md5:" << endl << " 1) Prosjek: " << md5Times[0] / itemNum << " 2) Najkrace izvrsavanje: " << md5Times[1] << " 3) Najdulje izvrsavanje: " << md5Times[2] << endl << endl;
+		cout << "Broj dodanih elemenata: " << itemNum << " Sveukupno vrijeme izvrsavanja: " << durationSlowerHashes;
+	}
+	
 
 	return 0;
 }
@@ -252,7 +260,7 @@ ostream& operator<<(ostream &out, BloomFilter &bloom)
 }
 
 //Provjerava koliko filter daje false positiva za datoteku s rijecima koje nisu u filteru
-int checkForFalsePositive(string file , BloomFilter filter) {
+int checkForFalsePositive(const string file , BloomFilter& filter) {
 
 	ifstream checkFile(file);
 	string line;
@@ -327,63 +335,79 @@ int chooseDifferentHashes(const int hashChoice, const string file, BloomFilter& 
 	return 0;
 }
 
-string chooseFile() {
+string chooseFile(int& num) {
 
 	int data;
 	string file;
-	cout << "Odaberite koju datoteku zelite doadati 1) 1k 2) 10k 3) 100k 4) 1M: " << endl;
+	cout << "1) 1k 2) 5k 3) 20k 4) 50K 5) 100K 6) 800K " << endl;
 	cin >> data;
 
 	switch (data)
 	{
 	case 1:
-		file = "./data/data-1k";
+		file = "./data/1k.txt";
+		num = 1000;
 		break;
 	case 2:
-		file = "./data/data-10k";
+		file = "./data/5k.txt";
+		num = 5000;
 		break;
 	case 3:
-		file = "./data/data-100k";
+		file = "./data/20k.txt";
+		num = 20000;
 		break;
 	case 4:
-		file = "./data/data-1M";
+		file = "./data/50k.txt";
+		num = 50000;
+		break;
+	case 5:
+		file = "./data/100k.txt";
+		num = 100000;
+		break;
+	case 6:
+		file = "./data/800k.txt";
+		num = 800000;
 		break;
 	default:
 		cout << "Kriv unos!";
 		break;
 	}
 
-	//Za test 
-
-	file = "./data/74402.txt";
 
 	return file;
 
 }
 
 
-int createNewFilter(int bitNumber, int WithKM, int hashesChosen) {
+int createNewFilter(const int bitNumber, const int WithKM, const int hashesChosen) {
 	
-	int data = 0;
+	int data = 0, itemNum =0;
 	string file;
 	
 	if (WithKM) {
 
 		BloomFilter filterKm(bitNumber, WithKM);
-		file = chooseFile();
+		cout << "Odaberite datoteku za dodati u filter: " << endl;
+		file = chooseFile(itemNum);
 		chooseDifferentHashes(hashesChosen, file, filterKm);
-		checkForFalsePositive("./data/10000.txt", filterKm);
-		filterKm.getStatsF();
+		filterKm.getStats(itemNum);
+		cout << endl;
+		cout << "Odaberite datoteku za provjeru u filter: " << endl;
+		checkForFalsePositive(chooseFile(itemNum), filterKm);
 
 
 	}
 	else
 	{
 		BloomFilter filter(bitNumber);
-		file = chooseFile();
+		cout << "Odaberite datoteku za dodati u filter: " << endl;
+		file = chooseFile(itemNum);
 		chooseDifferentHashes(hashesChosen, file, filter);
-		filter.getStatsF();
-		checkForFalsePositive("./data/10000.txt", filter);
+		filter.getStats(itemNum);
+		cout << endl;
+		cout << "Odaberite datoteku za provjeru u filter: " << endl;
+
+		checkForFalsePositive(chooseFile(itemNum), filter);
 
 	}
 
