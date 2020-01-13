@@ -1,4 +1,5 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 /* MD5
  converted to C++ class by Frank Thilo (thilo@unix-ag.org)
  for bzflag (http://www.bzflag.org)
@@ -58,7 +59,7 @@ public:
 	void update(const unsigned char *buf, size_type length);
 	void update(const char *buf, size_type length);
 	MD5& finalize();
-	std::string hexdigest() const;
+	int hexdigest() const;
 	friend std::ostream& operator<<(std::ostream&, MD5 md5);
 
 private:
@@ -89,7 +90,7 @@ private:
 	static inline void II(uint4 &a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac);
 };
 
-std::string md5(const std::string str);
+int md5(const std::string str);
 
 #endif
 
@@ -428,17 +429,21 @@ MD5& MD5::finalize()
 //////////////////////////////
 
 // return hex representation of digest as string
-std::string MD5::hexdigest() const
+int MD5::hexdigest() const
 {
 	if (!finalized)
-		return "";
+		return 0;
 
 	char buf[33];
 	for (int i = 0; i < 16; i++)
 		sprintf(buf + i * 2, "%02x", digest[i]);
 	buf[32] = 0;
 
-	return std::string(buf);
+	std::stringstream luksic(buf);
+	int x = 0;
+	luksic >> x;
+
+	return x;
 }
 
 //////////////////////////////
@@ -450,7 +455,7 @@ std::ostream& operator<<(std::ostream& out, MD5 md5)
 
 //////////////////////////////
 
-std::string md5(const std::string str)
+int md5(const std::string str)
 {
 	MD5 md5 = MD5(str);
 

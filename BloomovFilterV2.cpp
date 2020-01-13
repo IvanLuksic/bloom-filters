@@ -6,9 +6,10 @@
 #include<ctime>
 #include<chrono>
 #include<list>
+#include<sstream>
 #include"./Hash-functions/md5.h"
 #include"murmur3_fnv.h"
-//#include "sha1.h"
+#include "sha1.h"
 using namespace std;
 
 class BloomFilter
@@ -17,9 +18,10 @@ public:
 	BloomFilter(int,int);
 	BloomFilter(int);
 	vector<bool> filter;
-	int check(string);
+	int check(string ,int);
 	//int insert(string);
-	int insertKM(string);
+	int insertKMF(string);
+	int insertKMS(string);
 	int insertPlainF(string);
 	int insertPlainS(string);
 	int getStats(int);
@@ -40,21 +42,26 @@ protected:
 	int murmurTimes[3];
 	int fnvTimes[3];
 	int md5Times[3];
+	int sha1Times[3];
 };
 
 //Racunanje prosjecnih i potpunih vremena dodavanja
 int BloomFilter::getStats(const int itemNum) {
-	if (murmurTimes != 0) {
+
+	cout << endl << endl;
+	if (murmurTimes[0] != 0) {
 		
-		cout << "Vrijeme izvrsavanja - murmur3:" << endl << " 1) Prosjek: " << murmurTimes[0] / itemNum << " 2) Najkrace izvrsavanje: " << murmurTimes[1] << " 3) Najdulje izvrsavanje: " << murmurTimes[2]<<endl<<endl;
-		cout << "Vrijeme izvrsavanja - fnv:" << endl << " 1) Prosjek: " << fnvTimes[0] / itemNum << " 2) Najkrace izvrsavanje: " << fnvTimes[1] << " 3) Najdulje izvrsavanje: " << fnvTimes[2] << endl;
-		cout << "Broj dodanih elemenata: " << itemNum << " Sveukupno vrijeme izvrsavanja: " << durationFasterHashes;
+		cout << "Vrijeme izvrsavanja (u nanosekundama)- murmur3:" << endl << " 1) Prosjek: " << murmurTimes[0] / itemNum << " 2) Najkrace izvrsavanje: " << murmurTimes[1] << " 3) Najdulje izvrsavanje: " << murmurTimes[2]<<endl<<endl;
+		cout << "Vrijeme izvrsavanja (u nanosekundama)- fnv:" << endl << " 1) Prosjek: " << fnvTimes[0] / itemNum << " 2) Najkrace izvrsavanje: " << fnvTimes[1] << " 3) Najdulje izvrsavanje: " << fnvTimes[2] << endl<<endl;
+		cout << "Broj dodanih elemenata: " << itemNum << " Sveukupno vrijeme izvrsavanja (u milisekundama): " << durationFasterHashes/1000000 << endl << endl;
 	}
 	else if(md5Times[0] !=0) {
-		cout << "Vrijeme izvrsavanja - md5:" << endl << " 1) Prosjek: " << md5Times[0] / itemNum << " 2) Najkrace izvrsavanje: " << md5Times[1] << " 3) Najdulje izvrsavanje: " << md5Times[2] << endl << endl;
-		cout << "Broj dodanih elemenata: " << itemNum << " Sveukupno vrijeme izvrsavanja: " << durationSlowerHashes;
+		cout << "Vrijeme izvrsavanja (u nanosekundama) - md5:" << endl << " 1) Prosjek: " << md5Times[0] / itemNum << " 2) Najkrace izvrsavanje: " << md5Times[1] << " 3) Najdulje izvrsavanje: " << md5Times[2] << endl << endl;
+		cout << "Vrijeme izvrsavanja (u nanosekundama) - sha1:" << endl << " 1) Prosjek: " << sha1Times[0] / itemNum << " 2) Najkrace izvrsavanje: " << sha1Times[1] << " 3) Najdulje izvrsavanje: " << sha1Times[2] << endl << endl;
+		cout << "Broj dodanih elemenata: " << itemNum << " Sveukupno vrijeme izvrsavanja (u milisekundama): " << durationSlowerHashes/1000000 << endl << endl;;
 	}
 	
+	cout << endl << endl;
 
 	return 0;
 }
@@ -93,7 +100,7 @@ int BloomFilter::countTrue()
 }
 
 //Poziva se ako je km 1, km dodavanje 
-int BloomFilter::insertKM(string data) {
+int BloomFilter::insertKMF(string data) {
 
 	auto startMurmur3 = chrono::high_resolution_clock::now();
 	uint32_t mur = MuRMuR3(data, seed);
@@ -129,6 +136,47 @@ int BloomFilter::insertKM(string data) {
 	fnvTimes[0] += durationFNV.count();
 
 	durationFasterHashes += durationMM3.count() + durationFNV.count();
+
+	return 0;
+}
+
+
+int BloomFilter::insertKMS(string data) {
+
+	auto startMd5 = chrono::high_resolution_clock::now();
+	uint32_t md = md5(data);
+	auto endMd5 = chrono::high_resolution_clock::now();
+
+
+
+	auto startSha1 = chrono::high_resolution_clock::now();
+	uint32_t sha = FNV1a(data);
+	auto endSha1 = chrono::high_resolution_clock::now();
+
+
+	for (int i = 0; i < numOfSimulatedHashFunctions; i++)
+	{
+		filter[(md + i * sha + i * i) % velfiltera] = 1;
+	}
+
+	auto endSha1Km = chrono::high_resolution_clock::now();
+
+	auto durationMd5 = chrono::duration_cast<chrono::nanoseconds>(endMd5 - startMd5);
+	auto durationSha1 = chrono::duration_cast<chrono::nanoseconds>(endSha1Km - startSha1);
+
+	if (md5Times[0] == 0 && sha1Times[0] == 0) {
+
+		setFirstTime(durationMd5.count(), md5Times[1], md5Times[2]);
+		setFirstTime(durationSha1.count(), sha1Times[1], sha1Times[2]);
+	}
+
+	checkMinMax(durationMd5.count(), md5Times[1], md5Times[2]);
+	checkMinMax(durationSha1.count(), sha1Times[1], sha1Times[2]);
+
+	md5Times[0] += durationMd5.count();
+	sha1Times[0] += durationSha1.count();
+
+	durationSlowerHashes += durationMd5.count() + durationSha1.count();
 
 	return 0;
 }
@@ -171,31 +219,31 @@ int BloomFilter::insertPlainF(string data) {
 int BloomFilter::insertPlainS(string data) {
 
 	auto startMd5 = chrono::high_resolution_clock::now();
-	filter[MuRMuR3(data, seed) % velfiltera] = 1;
+	filter[md5(data) % velfiltera] = 1;
 	auto endMd5 = chrono::high_resolution_clock::now();
 
 
 
-	auto startFnv = chrono::high_resolution_clock::now();
-	filter[FNV1a(data) % velfiltera] = 1;
-	auto endFnv = chrono::high_resolution_clock::now();
+	auto startSha1 = chrono::high_resolution_clock::now();
+	filter[sha1(data) % velfiltera] = 1;
+	auto endSha1 = chrono::high_resolution_clock::now();
 
 	auto durationMd5 = chrono::duration_cast<chrono::nanoseconds>(endMd5 - startMd5);
-	auto durationFNV = chrono::duration_cast<chrono::nanoseconds>(endFnv - startFnv);
+	auto durationSha1 = chrono::duration_cast<chrono::nanoseconds>(endSha1 - startSha1);
 
 	if (md5Times[0] == 0 && fnvTimes[0] == 0) {
 
 		setFirstTime(durationMd5.count(), md5Times[1], md5Times[2]);
-		setFirstTime(durationFNV.count(), fnvTimes[1], fnvTimes[2]);
+		setFirstTime(durationSha1.count(), sha1Times[1], sha1Times[2]);
 	}
 
 	checkMinMax(durationMd5.count(), md5Times[1], md5Times[2]);
-	checkMinMax(durationFNV.count(), fnvTimes[1], fnvTimes[2]);
+	checkMinMax(durationSha1.count(), sha1Times[1], sha1Times[2]);
 
 	md5Times[0] += durationMd5.count();
-	fnvTimes[0] += durationFNV.count();
+	sha1Times[0] += durationSha1.count();
 
-	durationFasterHashes += durationMd5.count() + durationFNV.count();
+	durationSlowerHashes += durationMd5.count() + durationSha1.count();
 
 
 
@@ -203,14 +251,20 @@ int BloomFilter::insertPlainS(string data) {
 }
 
 //Provjera postoji li element u filteru
-int BloomFilter::check(string data)
+int BloomFilter::check(string data, int hashes)
 {
-	if (WithKirschMitzenmacher == 0)
+	if (WithKirschMitzenmacher == 0 && hashes ==1)
 	{
 		if (filter[FNV1a(data) % velfiltera] == 1 && filter[MuRMuR3(data, seed) % velfiltera] == 1) return 1;
 		else return 0;
 	}
-	else//km optimizacija
+	else if (WithKirschMitzenmacher == 0 && hashes == 2) {
+
+		if (filter[sha1(data) % velfiltera] == 1 && filter[md5(data) % velfiltera] == 1) return 1;
+		else return 0;
+
+	}
+	else if(WithKirschMitzenmacher == 1 && hashes == 1)//km optimizacija
 	{
 		uint32_t mur = MuRMuR3(data, seed);
 		uint32_t fnv = FNV1a(data);
@@ -218,6 +272,19 @@ int BloomFilter::check(string data)
 		for (int i = 0; i < numOfSimulatedHashFunctions; i++)
 		{
 			if (filter[(mur + i*fnv + i*i) % velfiltera ] == 1) ind++;
+		}
+		if (ind == numOfSimulatedHashFunctions) return 1;
+		else return 0;
+
+
+	}
+	else if (WithKirschMitzenmacher == 1 && hashes == 2) {
+		uint32_t mda = md5(data);
+		uint32_t sha = sha1(data);
+		int ind = 0;
+		for (int i = 0; i < numOfSimulatedHashFunctions; i++)
+		{
+			if (filter[(mda + i * sha + i * i) % velfiltera] == 1) ind++;
 		}
 		if (ind == numOfSimulatedHashFunctions) return 1;
 		else return 0;
@@ -260,7 +327,7 @@ ostream& operator<<(ostream &out, BloomFilter &bloom)
 }
 
 //Provjerava koliko filter daje false positiva za datoteku s rijecima koje nisu u filteru
-int checkForFalsePositive(const string file , BloomFilter& filter) {
+int checkForFalsePositive(const string file , BloomFilter& filter, const int numOfHash) {
 
 	ifstream checkFile(file);
 	string line;
@@ -272,7 +339,7 @@ int checkForFalsePositive(const string file , BloomFilter& filter) {
 
 
 
-	while (checkFile >> line) if (filter.check(line) == 1) falsePositive++;
+	while (checkFile >> line) if (filter.check(line, numOfHash) == 1) falsePositive++;
 
 	
 	cout << endl << "Filter vraca " << falsePositive << " netocnih" << endl;
@@ -303,7 +370,7 @@ int chooseDifferentHashes(const int hashChoice, const string file, BloomFilter& 
 		else {
 			while (fileChoosen >> line)
 			{
-				filter.insertKM(line);
+				filter.insertKMF(line);
 			}
 
 		}
@@ -319,7 +386,7 @@ int chooseDifferentHashes(const int hashChoice, const string file, BloomFilter& 
 		else {
 			while (fileChoosen >> line)
 			{
-				filter.insertKM(line);
+				filter.insertKMS(line);
 			}
 
 		}
@@ -378,6 +445,38 @@ string chooseFile(int& num) {
 
 }
 
+int compareSearchFileFilter(string file, BloomFilter filter, const int hashNum) {
+	int responeFilter, responeFile = 0;
+	string searchString,line;
+	ifstream fileChoosen(file);
+
+	cout << "Unesite rijec koju zelite traziti: ";
+	cin >> searchString;
+
+	auto startFilter= chrono::high_resolution_clock::now();
+	responeFilter = filter.check(searchString,hashNum);
+	auto endFilter = chrono::high_resolution_clock::now();
+
+	auto startFile = chrono::high_resolution_clock::now();
+	
+	while(fileChoosen >> line) {
+
+
+		if (line == searchString) {
+			responeFile = 1;
+			break;
+		}
+
+	}
+	auto endFile = chrono::high_resolution_clock::now();
+
+	auto durationFilter = chrono::duration_cast<chrono::nanoseconds>(endFilter - startFilter);
+	auto durationFile = chrono::duration_cast<chrono::nanoseconds>(endFile - startFile);
+
+	cout << "Za napraviti pretragu Bloom filteru je trebalo: " << durationFilter.count() << " dok je za traziti to u datoteci bilo potrebno: " << durationFile.count() << endl << endl;
+
+	return 0;
+}
 
 int createNewFilter(const int bitNumber, const int WithKM, const int hashesChosen) {
 	
@@ -390,10 +489,12 @@ int createNewFilter(const int bitNumber, const int WithKM, const int hashesChose
 		cout << "Odaberite datoteku za dodati u filter: " << endl;
 		file = chooseFile(itemNum);
 		chooseDifferentHashes(hashesChosen, file, filterKm);
+
 		filterKm.getStats(itemNum);
+		compareSearchFileFilter(file, filterKm, hashesChosen);
 		cout << endl;
 		cout << "Odaberite datoteku za provjeru u filter: " << endl;
-		checkForFalsePositive(chooseFile(itemNum), filterKm);
+		checkForFalsePositive(chooseFile(itemNum), filterKm,hashesChosen);
 
 
 	}
@@ -402,12 +503,14 @@ int createNewFilter(const int bitNumber, const int WithKM, const int hashesChose
 		BloomFilter filter(bitNumber);
 		cout << "Odaberite datoteku za dodati u filter: " << endl;
 		file = chooseFile(itemNum);
+		cout << endl << endl;
 		chooseDifferentHashes(hashesChosen, file, filter);
 		filter.getStats(itemNum);
-		cout << endl;
+		compareSearchFileFilter(file, filter, hashesChosen);
+		cout << endl<<endl;
 		cout << "Odaberite datoteku za provjeru u filter: " << endl;
 
-		checkForFalsePositive(chooseFile(itemNum), filter);
+		checkForFalsePositive(chooseFile(itemNum), filter,hashesChosen);
 
 	}
 
@@ -418,7 +521,8 @@ int createNewFilter(const int bitNumber, const int WithKM, const int hashesChose
 int main()
 {
 
-	int count, numOfKM = 0 , hashesChosen, bitNumber;
+	int count, numOfKM = 0 , hashesChosen, bitNumber; 
+
 	string includesKM;
 
 
@@ -428,7 +532,7 @@ int main()
 
 		for (int i = 0; i < count; i++) {
 
-			cout << "Koliko bitovaa treba Bloomov filter imati: ";
+			cout << "Koliko bitova treba Bloomov filter imati: ";
 			cin >> bitNumber;
 			cout << endl;
 
@@ -443,8 +547,7 @@ int main()
 			}
 			cout << "Zelite li koristiti brze ili sporije hash funkcije, odaberite 1 za brze, 2 za sporije " << endl;
 			cin >> hashesChosen;
-			cout << endl;
-
+			cout << endl<<endl;
 			createNewFilter(bitNumber, numOfKM, hashesChosen );
 
 			numOfKM = 0;
