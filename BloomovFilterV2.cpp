@@ -7,12 +7,42 @@
 #include<chrono>
 #include<list>
 #include<sstream>
-#include"./Hash-functions/md5.h"
+#include"hash-functions/md5.h"
 #include"murmur3_fnv.h"
 #include "sha1.h"
 using namespace std;
+// OVO SAN BACIA NA VRH JER SAN MORA DEKLARIRAT NA VRHU FUNKCIJU INT HASHES A ONA PRIMA TIMES PA JE UNDEFINED AKO NIJE POVIŠE NJE
+class Times {
+public:
+	int getTimeFull() {
+		return full;
+	}
+	int getTimeMin() {
+		return min;
+	}
+	int getTimeMax() {
+		return max;
+	}
+	int setTimeFull(int s_full) {
+		full += s_full;
+		return 0;
+	}
+	int setTimeMin(int s_min) {
+		min = s_min;
+		return 0;
+	}
+	int setTimeMax(int s_max) {
+		max = s_max;
+		return 0;
+	}
+protected:
+	int full;
+	int min;
+	int max;
 
-//izbacit nepotrebno
+};
+
+int hashes(int, string, Times);
 class BloomFilter
 {
 public:
@@ -24,6 +54,8 @@ public:
 	}
 	int set(int index) {
 		filter[index] = 1;
+
+		return 0;
 	}
 	int check(int index) {
 		if (filter[index]) {
@@ -33,46 +65,32 @@ public:
 			return 0;
 		}
 	}
-	int getStats(int);
-	int countTrue();
-	int setFirstTime(int, int& , int& );
 protected:
 	int velfiltera;
 };
 
 
-//NOVO DODANO od ovde
 
-class Times {
-public:
-	int getTimeFull() {
-		return full;
-	}
-	int getTimeMin() {
-		return min;
-	}
-	int getTimeMax(){
-		return max;
-	}
-	int setTimeFull(int s_full) {
-		full += s_full;
-	}
-	int setTimeMin(int s_min) {
-		min = s_min;
-	}
-	int setTimeMax(int s_max) {
-		max = s_max;
-	}
-protected:
-	int full;
-	int min;
-	int max;
-
-};
 
 class operations {
 public:
 	operations(int);
+
+	int getStartNum() {
+		return startNum;
+	}
+
+	int getKMfunctions() {
+		return KMfunctions;
+	}
+
+	Times getTimes() {
+		return time[0];
+	}
+
+	Times getTimesTwo() {
+		return time[1];
+	}
 
 	int insert(string data, BloomFilter filter) {
 		int i, size = filter.getSize();
@@ -80,42 +98,42 @@ public:
 		if (!KMfunctions) {
 			for (i = startNum; i < startNum + 2; i++) {
 
-				filter.set(hashes(i, data) % size);
-			
+				filter.set(hashes(i, data, time[0]) % size);
+
 			}
 		}
 		else {
 			for (i = 0; i < KMfunctions; i++) {
 
-				filter.set((hashes(startNum, data) + i * hashes(++startNum, data) + i * i) % size);
+				filter.set((hashes(startNum, data, time[1]) + i * hashes(++startNum, data, time[1]) + i * i) % size);
 			}
 		}
-
+		return 0;
 	}
 	int check(string data, BloomFilter filter) {
 		int size = filter.getSize(), shouldBeConstant = 0;
 
 		if (!KMfunctions) {
 
-		
-			if (filter.check(hashes(startNum, data) % size) && filter.check(hashes(startNum + 1, data) % size)) {
+
+			if (filter.check(hashes(startNum, data, time[0]) % size) && filter.check(hashes(startNum + 1, data, time[0]) % size)) {
 				return 1;
 			}
 			else {
 				return 0;
 			}
-		
+
 		}
 		else {
 
 			for (int i = 0; i < KMfunctions; i++) {
-			
-				if (!filter.check((hashes(startNum, data) + i * hashes(++startNum, data) + i * i) % size)) {
+
+				if (!filter.check((hashes(startNum, data, time[1]) + i * hashes(++startNum, data, time[1]) + i * i) % size)) {
 					shouldBeConstant = 1;
 					break;
 				}
-			
-			
+
+
 			}
 			if (!shouldBeConstant) {
 				return 1;
@@ -124,32 +142,67 @@ public:
 				return 0;
 			}
 
-		
+
 		}
-	
-	
+
+
 	}
 protected:
 	int startNum;
 	int KMfunctions;
+	Times time[2];
 };
 
+int setFirstTime(int duration, Times time) {
+	time.setTimeMax(duration);
+	time.setTimeMin(duration);
 
-int hashes(int num, string data) {
+	return 0;
+}
+
+int checkMinMax(int duration, Times time);
+int hashes(int num, string data, Times time) {
 	int result;
+	chrono::steady_clock::time_point start, end;
+
 	if (num == 0) {
-		//!! Ovde se mire vrimena, moze times bit klasa koje ce u operations klasi bit niz od dva, pa po indeksima se slat i ovde primat ka argument
-		result  = MuRMuR3(data, 123);
-	} 
+
+		start = chrono::high_resolution_clock::now();
+		result = MuRMuR3(data, 123);
+		end = chrono::high_resolution_clock::now();
+
+	}
 	else if (num == 1) {
+		start = chrono::high_resolution_clock::now();
 		result = FNV1a(data);
+		end = chrono::high_resolution_clock::now();
+
+
+
+
 	}
 	else if (num == 2) {
+		start = chrono::high_resolution_clock::now();
 		result = sha1(data);
+		end = chrono::high_resolution_clock::now();
+
+
+
+
 	}
 	else if (num == 3) {
+		start = chrono::high_resolution_clock::now();
 		result = md5(data);
+		end = chrono::high_resolution_clock::now();
+
 	}
+
+	auto duration = chrono::duration_cast<chrono::nanoseconds>(end - start);
+	if (time.getTimeFull() == 0) {
+		setFirstTime(duration.count(), time);
+	}
+	checkMinMax(duration.count(), time);
+	time.setTimeFull(duration.count());
 
 	return result;
 }
@@ -159,7 +212,7 @@ operations::operations(int num) {
 		startNum = 0;
 		KMfunctions = num % 1000;
 	}
-	else if(num/1000 == 7)
+	else if (num / 1000 == 7)
 	{
 		startNum = 2;
 		KMfunctions = num % 1000;
@@ -167,26 +220,24 @@ operations::operations(int num) {
 
 }
 
-//DO OVDE
 
 
-//!! statove dobivat getanjem vrimena iz klase opeations !!
 //Racunanje prosjecnih i potpunih vremena dodavanja
-int BloomFilter::getStats(const int itemNum) {
+int getStats(const int itemNum, operations op) {
+
+	//SAMO NISAN SIGURAN ZA OVO SVEUKUPNO VRIJEME
 
 	cout << endl << endl;
-	if (murmurTimes[0] != 0) {
-		
-		cout << "Vrijeme izvrsavanja (u nanosekundama)- murmur3:" << endl << " 1) Prosjek: " << murmurTimes[0] / itemNum << " 2) Najkrace izvrsavanje: " << murmurTimes[1] << " 3) Najdulje izvrsavanje: " << murmurTimes[2]<<endl<<endl;
-		cout << "Vrijeme izvrsavanja (u nanosekundama)- fnv:" << endl << " 1) Prosjek: " << fnvTimes[0] / itemNum << " 2) Najkrace izvrsavanje: " << fnvTimes[1] << " 3) Najdulje izvrsavanje: " << fnvTimes[2] << endl<<endl;
-		cout << "Broj dodanih elemenata: " << itemNum << " Sveukupno vrijeme izvrsavanja (u milisekundama): " << durationFasterHashes/1000000 << endl << endl;
+	if (op.getStartNum() == 0) {
+		cout << "\t\tMurmur3\t\t\tfnv" << endl;
 	}
-	else if(md5Times[0] !=0) {
-		cout << "Vrijeme izvrsavanja (u nanosekundama) - md5:" << endl << " 1) Prosjek: " << md5Times[0] / itemNum << " 2) Najkrace izvrsavanje: " << md5Times[1] << " 3) Najdulje izvrsavanje: " << md5Times[2] << endl << endl;
-		cout << "Vrijeme izvrsavanja (u nanosekundama) - sha1:" << endl << " 1) Prosjek: " << sha1Times[0] / itemNum << " 2) Najkrace izvrsavanje: " << sha1Times[1] << " 3) Najdulje izvrsavanje: " << sha1Times[2] << endl << endl;
-		cout << "Broj dodanih elemenata: " << itemNum << " Sveukupno vrijeme izvrsavanja (u milisekundama): " << durationSlowerHashes/1000000 << endl << endl;;
+	else if (op.getStartNum() == 2) {
+
+		cout << "\t\tMd5\t\t\tSha1" << endl;
 	}
-	
+
+	cout << "Ukupno: " << op.getTimes().getTimeFull() << "\t\t" << op.getTimesTwo().getTimeFull() << endl;
+	cout << "Ukupno: " << op.getTimes().getTimeMin() << "\t\t" << op.getTimesTwo().getTimeMin() << endl;
 	cout << endl << endl;
 
 	return 0;
@@ -207,48 +258,6 @@ int checkMinMax(int duration, Times time) {
 
 
 //Za postavljanje min i max vrijednosti na prvi element 
-int BloomFilter::setFirstTime(int duration, int& hashMin, int& hashMax) {
-	hashMin = duration;
-	hashMax = duration;
-
-	return 0;
-}
-
-
-
-//duration.count() vraca vrime u nanosekundama
-int BloomFilter::insertPlainF(string data) {
-
-	auto startMurmur3 = chrono::high_resolution_clock::now();
-	filter[MuRMuR3(data, murmurSeed) % velfiltera] = 1;
-	auto endMurmur3 = chrono::high_resolution_clock::now();
-
-
-
-	auto startFnv = chrono::high_resolution_clock::now();
-	filter[FNV1a(data) % velfiltera] = 1;
-	auto endFnv = chrono::high_resolution_clock::now();
-
-	auto durationMM3 = chrono::duration_cast<chrono::nanoseconds>(endMurmur3 - startMurmur3);
-	auto durationFNV = chrono::duration_cast<chrono::nanoseconds>(endFnv - startFnv);
-
-
-	if (murmurTimes[0] == 0 && fnvTimes[0] == 0) {
-
-		setFirstTime(durationMM3.count(), murmurTimes[1], murmurTimes[2]);
-		setFirstTime(durationFNV.count(), fnvTimes[1], fnvTimes[2]);
-	}
-
-	checkMinMax(durationMM3.count(), murmurTimes[1], murmurTimes[2]);
-	checkMinMax(durationFNV.count(), fnvTimes[1], fnvTimes[2]);
-
-	murmurTimes[0] += durationMM3.count();
-	fnvTimes[0] += durationFNV.count();
-
-
-	return 0;
-}
-
 
 
 
@@ -262,14 +271,14 @@ BloomFilter::BloomFilter(int velicina)
 
 
 
-ostream& operator<<(ostream &out, BloomFilter &bloom)
+ostream& operator<<(ostream& out, BloomFilter& bloom)
 {
 	for (bool j : bloom.filter) out << " " << j;
 	return out;
 }
 
 //Provjerava koliko filter daje false positiva za datoteku s rijecima koje nisu u filteru, triba pripravit
-int checkForFalsePositive(const string file , BloomFilter& filter, const int numOfHash) {
+int checkForFalsePositive(const string file, BloomFilter filter,  operations op) {
 
 	ifstream checkFile(file);
 	string line;
@@ -279,14 +288,12 @@ int checkForFalsePositive(const string file , BloomFilter& filter, const int num
 		cout << "Kriv unos!" << endl;
 	}
 
+	while (checkFile >> line) if (op.check(line, filter) == 1) falsePositive++;
 
 
-	while (checkFile >> line) if (filter.check(line, numOfHash) == 1) falsePositive++;
-
-	
 	cout << endl << "Filter vraca " << falsePositive << " netocnih" << endl;
 
-	
+
 	checkFile.clear();
 	checkFile.seekg(0, ios::beg);
 
@@ -294,57 +301,25 @@ int checkForFalsePositive(const string file , BloomFilter& filter, const int num
 }
 
 //Ovo dodaje el iz datoteke, triba pripravvit
-int chooseDifferentHashes(const int hashChoice, const string file, BloomFilter& filter){
-	
+int readFileInsert(const string file, BloomFilter filter, operations op) {
+
 	ifstream fileChoosen(file);
 	string line;
 
 
-	if (hashChoice == 1) {
-
-		if (!filter.WithKirschMitzenmacher) {
 			while (fileChoosen >> line)
 			{
-				
-				filter.insertPlainF(line);
+				op.insert(line, filter);
 			}
-		}
-		else {
-			while (fileChoosen >> line)
-			{
-				filter.insertKMF(line);
-			}
-
-		}
-	}
-	else if (hashChoice == 2) {
-
-		if (!filter.WithKirschMitzenmacher) {
-			while (fileChoosen >> line)
-			{
-				filter.insertPlainS(line);
-			}
-		}
-		else {
-			while (fileChoosen >> line)
-			{
-				filter.insertKMS(line);
-			}
-
-		}
-
-
-
-	}
-
+	
 	fileChoosen.clear();
 	fileChoosen.seekg(0, ios::beg);
-
 
 	return 0;
 }
 
 //triba pripravit ovo s numon
+//OVO NISAN DIRA
 string chooseFile(int& num) {
 
 	int data;
@@ -387,22 +362,23 @@ string chooseFile(int& num) {
 	return file;
 
 }
-//triba pripravit
-int compareSearchFileFilter(string file, BloomFilter filter, const int hashNum) {
+
+
+int compareSearchFileFilter(string file, BloomFilter filter, operations op) {
 	int responeFilter, responeFile = 0;
-	string searchString,line;
+	string searchString, line;
 	ifstream fileChoosen(file);
 
 	cout << "Unesite rijec koju zelite traziti: ";
 	cin >> searchString;
 
-	auto startFilter= chrono::high_resolution_clock::now();
-	responeFilter = filter.check(searchString,hashNum);
+	auto startFilter = chrono::high_resolution_clock::now();
+	responeFilter = op.check(searchString, filter);
 	auto endFilter = chrono::high_resolution_clock::now();
 
 	auto startFile = chrono::high_resolution_clock::now();
-	
-	while(fileChoosen >> line) {
+
+	while (fileChoosen >> line) {
 
 
 		if (line == searchString) {
@@ -420,7 +396,8 @@ int compareSearchFileFilter(string file, BloomFilter filter, const int hashNum) 
 
 	return 0;
 }
-//triba pripravit
+
+
 int createNewFilter(const int bitNumber, const int WithKM, const int hashesChosen) {
 
 	int data = 0, itemNum = 0;
@@ -428,32 +405,15 @@ int createNewFilter(const int bitNumber, const int WithKM, const int hashesChose
 	BloomFilter filter(bitNumber);
 	operations op(hashesChosen + WithKM);
 
-
-	BloomFilter filterKm(bitNumber);
 	cout << "Odaberite datoteku za dodati u filter: " << endl;
 	file = chooseFile(itemNum);
-	chooseDifferentHashes(hashesChosen, file, filterKm);
+	readFileInsert(file, filter, op);
 
-	filterKm.getStats(itemNum);
-	compareSearchFileFilter(file, filterKm, hashesChosen);
+	getStats(itemNum, op);
+	compareSearchFileFilter(file, filter, op);
 	cout << endl;
 	cout << "Odaberite datoteku za provjeru u filter: " << endl;
-	checkForFalsePositive(chooseFile(itemNum), filterKm, hashesChoosen);
-
-	BloomFilter filter(bitNumber);
-	cout << "Odaberite datoteku za dodati u filter: " << endl;
-	file = chooseFile(itemNum);
-	cout << endl << endl;
-	chooseDifferentHashes(hashesChosen, file, filter);
-	filter.getStats(itemNum);
-	compareSearchFileFilter(file, filter, hashesChosen);
-	cout << endl << endl;
-	cout << "Odaberite datoteku za provjeru u filter: " << endl;
-
-	checkForFalsePositive(chooseFile(itemNum), filter, hashesChosen);
-
-
-
+	checkForFalsePositive(chooseFile(itemNum), filter, op);
 
 	return 0;
 }
@@ -461,46 +421,46 @@ int createNewFilter(const int bitNumber, const int WithKM, const int hashesChose
 int main()
 {
 
-	int count, numOfKM = 0 , hashesChosen, bitNumber; 
+	int count, numOfKM = 0, hashesChosen, bitNumber;
 
 	string includesKM;
 
 
-		cout << "Koliko filtera zelite stvoriti: " ;
-		cin >> count;
+	cout << "Koliko filtera zelite stvoriti: ";
+	cin >> count;
+	cout << endl;
+
+	for (int i = 0; i < count; i++) {
+
+		cout << "Koliko bitova treba Bloomov filter imati: ";
+		cin >> bitNumber;
 		cout << endl;
 
-		for (int i = 0; i < count; i++) {
+		cout << "Zelite li da filter ima KM optimizaciju: ";
+		cin >> includesKM;
+		cout << endl;
+		if (includesKM == "da" || includesKM == "Da") {
 
-			cout << "Koliko bitova treba Bloomov filter imati: ";
-			cin >> bitNumber;
+			cout << "Koliko zelite simulirati hash funkcija pomocu KM optimizacije: ";
+			cin >> numOfKM;
 			cout << endl;
-
-			cout << "Zelite li da filter ima KM optimizaciju: ";
-			cin >> includesKM;
-			cout << endl;
-			if (includesKM == "da" || includesKM == "Da") {
-				
-				cout << "Koliko zelite simulirati hash funkcija pomocu KM optimizacije: ";
-				cin >> numOfKM;
-				cout << endl;
-			}
-			cout << "Zelite li koristiti brze ili sporije hash funkcije, odaberite 1 za brze, 2 za sporije " << endl;
-			cin >> hashesChosen;
-
-			if (hashesChosen == 1) {
-				hashesChosen == 5000;
-			}
-			else if (hashesChosen == 2) {
-				hashesChosen = 7000;
-			}
-			cout << endl<<endl;
-			createNewFilter(bitNumber, numOfKM, hashesChosen );
-
-			numOfKM = 0;
-
 		}
-	
+		cout << "Zelite li koristiti brze ili sporije hash funkcije, odaberite 1 za brze, 2 za sporije " << endl;
+		cin >> hashesChosen;
+
+		if (hashesChosen == 1) {
+			hashesChosen == 5000;
+		}
+		else if (hashesChosen == 2) {
+			hashesChosen = 7000;
+		}
+		cout << endl << endl;
+		createNewFilter(bitNumber, numOfKM, hashesChosen);
+
+		numOfKM = 0;
+
+	}
+
 	system("pause");
 	return 0;
 
