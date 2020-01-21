@@ -165,9 +165,10 @@ int getStats(const int itemNum, operations op) {
 
 int premadeFilter(const bool WithKM, const bool fastHashes)
 {
-	int bitNumber = 0, KMfunctions;
+	int bitNumber = 0, numOfFalsePositives = 0, KMfunctions;
 	string line, varijanta;
 	ifstream input("./data/100k.txt");
+	ifstream checkFile("./data/50k.txt");
 
 	if (fastHashes && WithKM)
 	{
@@ -185,7 +186,7 @@ int premadeFilter(const bool WithKM, const bool fastHashes)
 	{
 		bitNumber = 2000000;
 		KMfunctions = 11;
-		varijanta = ("Filter sa kriptografskim (SHA1 i md5) hashevima, uz KM optimizaciju s " +to_string( KMfunctions)+ " simuliranih funkcija - 2 milijuna bitova");
+		varijanta = ("Filter sa kriptografskim (SHA1 i md5) hashevima, uz KM optimizaciju s " + to_string(KMfunctions) + " simuliranih funkcija - 2 milijuna bitova");
 	}
 	else
 	{
@@ -198,14 +199,20 @@ int premadeFilter(const bool WithKM, const bool fastHashes)
 
 	operations postavke(fastHashes, KMfunctions);
 
+	//Unos podataka u Bloomov filter iz datoteke 100k.txt
 	while (input >> line) postavke.insert(line, filter);
-
-
 	input.clear();
 	input.seekg(0, ios::beg);
+	//Provjera postojanja riječi iz 50k.txt u 100k.txt - pokušaj izazivanja false positive-a 
+	while (checkFile >> line)
+	{
+		if (postavke.check(line, filter)) numOfFalsePositives++;
+	}
+
 	cout << endl;
 	cout << varijanta << ":" << endl;
 	getStats(100000, postavke);
+	cout << "False positivea na 50 tisuca pokusaja:\t" << numOfFalsePositives << endl << endl;
 
 	return 0;
 }
@@ -219,9 +226,13 @@ int main()
 	t[2] = thread(premadeFilter, 0, 0);
 	t[3] = thread(premadeFilter, 1, 0);
 
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++)
+	{
 		t[i].join();
 	}
+	system("pause");
+	return 0;
+
 	system("pause");
 	return 0;
 
