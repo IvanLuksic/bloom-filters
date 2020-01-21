@@ -39,7 +39,7 @@ public:
 	SHA1();
 	void update(const std::string &s);
 	void update(std::istream &is);
-	int final();
+	uint32_t final();
 	//tatic std::string from_file(const std::string &filename);
 
 private:
@@ -98,7 +98,7 @@ void SHA1::update(std::istream &is)
  * Add padding and return the message digest.
  */
 
-int SHA1::final()
+uint32_t SHA1::final()
 {
 	/* Total number of hashed bits */
 	uint64 total_bits = (transforms*BLOCK_BYTES + buffer.size()) * 8;
@@ -141,10 +141,10 @@ int SHA1::final()
 	reset();
 
 	std::stringstream luksic(result.str());
-	int x = 0;
-	luksic >> x;
+	std::string a = luksic.str().substr(32, 39);
+	uint32_t r=std::stoll(a, nullptr, 16);
 
-	return x;
+	return r;
 }
 
 
