@@ -59,7 +59,7 @@ public:
 	void update(const unsigned char *buf, size_type length);
 	void update(const char *buf, size_type length);
 	MD5& finalize();
-	int hexdigest() const;
+	uint32_t hexdigest() const;
 	friend std::ostream& operator<<(std::ostream&, MD5 md5);
 
 private:
@@ -429,7 +429,7 @@ MD5& MD5::finalize()
 //////////////////////////////
 
 // return hex representation of digest as string
-int MD5::hexdigest() const
+uint32_t MD5::hexdigest() const
 {
 	if (!finalized)
 		return 0;
@@ -440,10 +440,9 @@ int MD5::hexdigest() const
 	buf[32] = 0;
 
 	std::stringstream luksic(buf);
-	int x = 0;
-	luksic >> x;
-
-	return x;
+	std::string a = luksic.str().substr(24, 31);
+	uint32_t r = std::stoll(a, nullptr, 16);
+	return r;
 }
 
 //////////////////////////////
