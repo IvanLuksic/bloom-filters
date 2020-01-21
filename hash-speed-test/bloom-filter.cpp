@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
+##define _CRT_SECURE_NO_WARNINGS
 #include<iostream>
 #include<string>
 #include<vector>
@@ -158,7 +158,7 @@ int getStats(const int itemNum, operations op) {
 	cout << "Prosjek: \t\t" << op.getTimes(0).getTimeFull()/itemNum << "\t\t" << op.getTimes(1).getTimeFull()/itemNum << endl;
 	cout << "Minimum: \t\t" << op.getTimes(0).getTimeMin() << "\t\t" << op.getTimes(1).getTimeMin()  << endl;
 	cout << "Maksimum: \t\t" << op.getTimes(0).getTimeMax() << "\t\t" << op.getTimes(1).getTimeMax()  << endl;
-	cout << endl << endl;
+	cout << endl;
 
 	return 0;
 }
@@ -203,16 +203,34 @@ int premadeFilter(const bool WithKM, const bool fastHashes)
 	while (input >> line) postavke.insert(line, filter);
 	input.clear();
 	input.seekg(0, ios::beg);
+
 	//Provjera postojanja riječi iz 50k.txt u 100k.txt - pokušaj izazivanja false positive-a 
-	while (checkFile >> line)
-	{
+	while (checkFile >> line){
 		if (postavke.check(line, filter)) numOfFalsePositives++;
 	}
+	checkFile.clear();
+	checkFile.seekg(0, ios::beg);
 
-	cout << endl;
-	cout << varijanta << ":" << endl;
+	//mjerenje vremena potrebnog za provjeru postojanja "GitGud" pomoću Bloomova filtera i prolaska kroz tekst
+	bool gitgud = 0;
+	chrono::high_resolution_clock::time_point start1,start2,end1, end2;
+
+	start1 = chrono::high_resolution_clock::now();
+	gitgud=postavke.check("GitGud", filter);
+	end1 = chrono::high_resolution_clock::now();
+	auto duration1 = chrono::duration_cast<chrono::nanoseconds>(end1 - start1);
+
+	start2 = chrono::high_resolution_clock::now();
+	while(input >> line) { if (line == "gitgud") break;}
+	end2 = chrono::high_resolution_clock::now();
+	auto duration2 = chrono::duration_cast<chrono::nanoseconds>(end2 - start2);
+
+	//ispis mjerenja
+	cout << "___________________________________________________________________________________________________________________________________"<<endl<<endl;
+	cout << varijanta << ":";
 	getStats(100000, postavke);
-	cout << "False positivea na 50 tisuca pokusaja:\t" << numOfFalsePositives << endl << endl;
+	cout << "Broj izazvanih false positivea na 50 tisuca pokusaja:\t" << numOfFalsePositives << endl ;
+	cout << "Vrijeme provjere postojanja rijeci 'GitGud' u obradenom tekstu:" <<endl<<"  -Bloomov filter:  "<<duration1.count()<<" ns"<<endl<<"  -prolazak kroz .txt file:  "<< duration2.count() <<" ns"<< endl << endl<<endl;
 
 	return 0;
 }
